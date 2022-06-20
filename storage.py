@@ -11,9 +11,9 @@ from nltk.corpus import stopwords
 from nltk.corpus import words
 
 # Other stuff
-from datetime import datetime, timedelta
+#from datetime import datetime, timedelta
 
-date = (datetime.date.today() - datetime.timedelta (days=1)).strftime("%d-%m-%y")
+#date = (datetime.date.today() - datetime.timedelta (days=1)).strftime("%d-%m-%y")
 
 # VARIABLES
 database = "example.db"                         # database file
