@@ -10,6 +10,10 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.corpus import words
 
+# Other stuff
+from datetime import datetime, timedelta
+
+date = (datetime.date.today() - datetime.timedelta (days=1)).strftime("%d-%m-%y")
 
 # VARIABLES
 database = "example.db"                         # database file
@@ -137,6 +141,7 @@ relevant_words.update(("account",
 
 
 # FUNCTIONS FOR INTERACTING WITH DB
+
 
 # retrieve list of all entries
 def get_emails():
