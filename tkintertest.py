@@ -1,4 +1,5 @@
 from tkinter import *
+
 window=Tk()
 window.title('AZ Email Analysis')
 btn=Button(window, text="This is Button widget", fg='red')
