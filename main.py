@@ -32,7 +32,7 @@ def import_xl():
 
 # Export spreadsheet
 def export_xl():
-    result = list_entries()
+    result = [("Date", "Issue", "Product", "Name", "Email", "Comment", "IP", "Session", "Followup")] + list_entries()
     df = pd.DataFrame(result)
     try:
         df.to_excel('cs_feedback.xlsx', sheet_name='CS Feedback', index=False, header=False)
@@ -44,8 +44,9 @@ def export_xl():
 # Import emails
 def import_emails():
     # Get the date
-    d = datetime.datetime.strptime(storage.get_last_date(), '%m/%d/%Y').date()
-    messagebox.showinfo('Hi', 'this is a test')
+    last_date = storage.get_last_date().split(' ')[0]
+    
+    d = datetime.datetime.strptime(last_date, '%Y-%m-%d').date()
     # Connect to outlook account
     try:
         app = win32com.client.Dispatch("Outlook.Application").GetNamespace("MAPI")

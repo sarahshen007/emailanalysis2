@@ -207,7 +207,7 @@ def get_last_date():
     date = ''
     with sqlite3.connect(database) as db:
         cursor = db.cursor()
-        cursor.execute('SELECT MAX (Date) AS "Max Date" FROM feedback;')
+        cursor.execute('SELECT MAX (Date) AS "Max Date" FROM feedback')
         date = cursor.fetchall()[0][0]
 
     return date
