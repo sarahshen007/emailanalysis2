@@ -197,8 +197,25 @@ def add_emails(email_list):
     with sqlite3.connect(database) as db:
         cursor = db.cursor()
         for email in email_list:
-            sql = f'INSERT INTO feedback (Date, Issue, Product, Name, Email, Comment, IP, Session, Followup) VALUES({email.date}, {email.issueSummary}, {email.product}, {email.name}, {email.customerEmail}, {email.comment}, {email.ipAddress}, {email.cookies}, {email.followup})'
+            sql = f"""INSERT INTO feedback (Date, Issue, Product, Name, Email, Comment, IP, Session, Followup) VALUES("{email.date}", "{email.issueSummary}", "{email.product}", "{email.name}", "{email.customerEmail}", "{email.comment.replace('"', "'")}", "{email.ipAddress}", "{email.cookies}", {email.followup})"""
+            print(sql)
             cursor.execute(sql)
+
+
+
+# get last day of db
+def get_last_date():
+    date = ''
+    with sqlite3.connect(database) as db:
+        cursor = db.cursor()
+        cursor.execute('SELECT MAX (Date) AS "Max Date" FROM feedback;')
+        date = cursor.fetchall()[0][0]
+
+    print(date)
+    return date
+
+def remove_duplicates():
+    return
 
 
 # FUNCTIONS FOR TEXT MANIPULATION & ISSUE PREDICTION

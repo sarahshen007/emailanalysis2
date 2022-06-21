@@ -92,10 +92,13 @@ while msg:
                 lastKey = pair[0].strip()
                 info[lastKey] = pair[1].strip()
 
-        # Generate summary of comment
-        summary = info['Comment Value']
+        # Generate summary of comment  
+        comment = info['Comment Value']
+        char_list = [comment[j] for j in range(len(comment)) if ord(comment[j]) in range(65536)]
+        comment_fix=''.join(char_list)    
+        info['Comment Value'] = comment_fix
 
-        predicted_issue = storage.generate_issue(summary, prev_data)
+        predicted_issue = storage.generate_issue(comment, prev_data)
 
         info['Issue Summary'] = predicted_issue[0]
         info['Product'] = predicted_issue[1]
