@@ -16,7 +16,7 @@ from nltk.corpus import words
 #date = (datetime.date.today() - datetime.timedelta (days=1)).strftime("%d-%m-%y")
 
 # VARIABLES
-database = "example.db"                         # database file
+database = "emails.db"                         # database file
 product_correspondence = {}                     # issue - product relationship dict
 
 correct_words = words.words()                   # spell check words
@@ -198,7 +198,6 @@ def add_emails(email_list):
         cursor = db.cursor()
         for email in email_list:
             sql = f"""INSERT INTO feedback (Date, Issue, Product, Name, Email, Comment, IP, Session, Followup) VALUES("{email.date}", "{email.issueSummary}", "{email.product}", "{email.name}", "{email.customerEmail}", "{email.comment.replace('"', "'")}", "{email.ipAddress}", "{email.cookies}", {email.followup})"""
-            print(sql)
             cursor.execute(sql)
 
 
@@ -211,7 +210,6 @@ def get_last_date():
         cursor.execute('SELECT MAX (Date) AS "Max Date" FROM feedback;')
         date = cursor.fetchall()[0][0]
 
-    print(date)
     return date
 
 def remove_duplicates():

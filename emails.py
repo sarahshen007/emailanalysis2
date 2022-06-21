@@ -15,8 +15,9 @@ class Email:
     
 # Loops through all Outlook folders to find given folder_name
 def get_folder_by_name(folder_name, root_folder):
-
-    for folder in root_folder.Folders: 
+    found_folder = None
+    
+    for folder in root_folder.Folders:
         if folder.Name == folder_name:
             found_folder = folder
 
