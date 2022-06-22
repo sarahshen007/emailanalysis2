@@ -10,6 +10,8 @@ from nltk.tokenize import word_tokenize
 from nltk.corpus import stopwords
 from nltk.corpus import words
 
+from datetime import date
+
 # Other stuff
 #from datetime import datetime, timedelta
 
@@ -144,11 +146,11 @@ relevant_words.update(("account",
 
 
 # retrieve list of all entries
-def get_emails():
+def get_emails(order):
     emails = []
     with sqlite3.connect(database) as db:
         cursor = db.cursor()
-        sql = "SELECT * FROM feedback"
+        sql = f"SELECT * FROM feedback ORDER BY Date {order}"
         cursor.execute(sql)
         emails = cursor.fetchall()
     return emails
@@ -158,21 +160,6 @@ def get_issues():
     issues = []
     with sqlite3.connect(database) as db:
         cursor = db.cursor()
-        sql = "SELECT Issue, Product, Comment FROM feedback"
-        cursor.execute(sql)
-        issues = cursor.fetchall()
-    return issues
-
-# put spreadsheet data in db
-def xl_db(excel):
-    emails = pd.read_excel(
-    excel, 
-    sheet_name='CS Feedback',
-    header=0)
-
-    with sqlite3.connect(database) as db:
-        cursor = db.cursor()
-
         cursor.execute(
         """
         CREATE TABLE if not exists feedback (
@@ -187,10 +174,41 @@ def xl_db(excel):
             Followup BOOL
             );
         """)
+        sql = "SELECT Issue, Product, Comment FROM feedback"
+        cursor.execute(sql)
+        issues = cursor.fetchall()
+    return issues
 
+# put spreadsheet data in db
+def xl_db(excel):
+    emails = pd.read_excel(
+    excel, 
+    sheet_name='CS Feedback',
+    header=0)
+    
+    emails.rename(columns = {'Issue Summary':'Issue', 'Follow Up Needed?': 'Followup'}, inplace = True)
+
+    with sqlite3.connect(database) as db:
+        cursor = db.cursor()
+        cursor.execute(
+        """
+        CREATE TABLE if not exists feedback (
+            Date DATE,
+            Issue TEXT,
+            Product TEXT,
+            Name TEXT,
+            Email TEXT,
+            Comment TEXT,
+            IP TEXT,
+            Session TEXT,
+            Followup BOOL
+            );
+        """)
+        cursor.execute("DELETE from feedback")
         emails.to_sql('feedback', db, if_exists='append', index=False)
 
         cursor.close()
+    remove_duplicates()
 
 # add given list of emails to database
 def add_emails(email_list):
@@ -199,22 +217,48 @@ def add_emails(email_list):
         for email in email_list:
             sql = f"""INSERT INTO feedback (Date, Issue, Product, Name, Email, Comment, IP, Session, Followup) VALUES("{email.date}", "{email.issueSummary}", "{email.product}", "{email.name}", "{email.customerEmail}", "{email.comment.replace('"', "'")}", "{email.ipAddress}", "{email.cookies}", {email.followup})"""
             cursor.execute(sql)
-
-
-
+    remove_duplicates()
+            
 # get last day of db
 def get_last_date():
-    date = ''
-    with sqlite3.connect(database) as db:
-        cursor = db.cursor()
-        cursor.execute('SELECT MAX (Date) AS "Max Date" FROM feedback')
-        date = cursor.fetchall()[0][0]
-
+    date = '2022-06-15'
+    try:
+        with sqlite3.connect(database) as db:
+            cursor = db.cursor()
+            cursor.execute('SELECT MAX (Date) AS "Max Date" FROM feedback')
+            date = cursor.fetchall()[0][0]
+    except:
+        return date
+        
     return date
 
+# remove duplicates from table
 def remove_duplicates():
-    return
+    with sqlite3.connect(database) as db:
+        cursor = db.cursor()
+        sql = """
+                DELETE FROM feedback
+                WHERE rowid NOT IN (
+                    SELECT MIN(rowid)
+                    FROM feedback
+                    GROUP BY Session
+                )
+                """
+        cursor.execute(sql)
 
+# get yesterday's emails
+def get_dated_emails():
+    result = [] 
+    
+    with sqlite3.connect(database) as db:
+        cursor = db.cursor()
+        sql = f"""
+                SELECT * FROM feedback WHERE Date >= date('now', '-1 day') ORDER BY ASC
+        """
+        cursor.execute(sql)
+        result = cursor.fetchall()
+    
+    return result
 
 # FUNCTIONS FOR TEXT MANIPULATION & ISSUE PREDICTION
 
@@ -324,7 +368,7 @@ def generate_issue(text, data):
             max_index = i
 
     if max_val == 0:
-        return 'General Inquiry'
+        return ['General Inquiry', 'CS']
 
     return [issues_list[max_index].title(), product_correspondence[issues_list[max_index].lower()]]
 

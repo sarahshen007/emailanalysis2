@@ -6,6 +6,8 @@ from tkinter import filedialog
 from tkinter import messagebox
 
 import datetime
+from datetime import date
+from datetime import timedelta
 import emails
 import storage
 import win32com
@@ -22,23 +24,27 @@ def import_xl():
     except:
         messagebox.showerror('Error', 'File was not sucessfully chosen. Please try again.')
         return
+    
     try:
         storage.xl_db(excelPath)
         messagebox.showinfo('Success', 'You imported your spreadsheet into the database.')
     except:
         messagebox.showerror('Error', 'File was not successfully imported. Please try again.')
         return
+    
     update_treeview()
 
 # Export spreadsheet
 def export_xl():
-    result = [("Date", "Issue", "Product", "Name", "Email", "Comment", "IP", "Session", "Followup")] + list_entries()
+    result = [("Date", "Issue Summary", "Product", "Name", "Email", "Comment", "IP", "Session", "Follow Up Needed?")] + list_entries("ASC")
     df = pd.DataFrame(result)
+    
     try:
         df.to_excel('cs_feedback.xlsx', sheet_name='CS Feedback', index=False, header=False)
     except:
         messagebox.showerror('Error', 'Please make sure that cs_feedback.xlsx is not open in the background.')
         return
+    
     messagebox.showinfo('Success', 'Your spreadsheet was exported to cs_feedback.xlsx!')
 
 # Import emails
@@ -60,7 +66,7 @@ def import_emails():
     root_folder = app.Folders(account.DisplayName)
     
     try:
-        emails_folder = emails.get_folder_by_name("CS EMAILS", root_folder)
+        emails_folder = emails.get_folder_by_name("Inbox", root_folder).Folders['CS EMAILS']
     except:
         messagebox.showerror('Error', 'Please move all emails to a folder under your.name@autozone.com titled "CS EMAILS."')
         return    
@@ -149,19 +155,30 @@ def import_emails():
     messagebox.showinfo('Success', 'Your emails were added to the database!')
 
 # View data
-def list_entries():
-    result = storage.get_emails()
+def list_entries(order):
+    result = storage.get_emails(order)
     for i in range(len(result)):
         entry=result[i]
         comment = str(entry[5])
         comment=''.join([comment[j] for j in range(len(comment)) if ord(comment[j]) in range(65536)])
-        result[i] = (entry[0], entry[1], entry[2], entry[3], entry[4], comment, entry[6], entry[7])
+        result[i] = (entry[0], entry[1], entry[2], entry[3], entry[4], comment, entry[6], entry[7], entry[8])
     return result
 
+# Copy yesterday's entries
+def copy_entries():
+    try:
+        result = storage.get_dated_emails()    
+        df = pd.DataFrame(result, columns = ['Date', 'Issue', 'Product', 'Name', 'Email', 'Comment', 'IP', 'Session', 'Followup'])
+        df.to_clipboard(sep='\t', index=False, header=False)
+    
+        messagebox.showinfo('Success', 'Emails were copied in excel format to clipboard!')
+
+    except:
+        messagebox.showerror('Error', 'Copy unsuccessful. Try again')
 # update treeview
 def update_treeview():
     try:
-        results = list_entries()
+        results = list_entries("DESC")
     except:
         results = []
     
@@ -173,15 +190,21 @@ def update_treeview():
         num+=1
 
 master_window=Tk()
-master_window.title('AZ Email Analysis')
+master_window.title('AZ Emails')
 master_window.iconbitmap('images/azlogo.ico')
 master_window.geometry("1000x400")
 
-excel = LabelFrame(master_window, text='Excel', padding=10)
-excel.pack(anchor=CENTER)
+options = Frame(master_window, padding = 10)
+options.pack(anchor=W)
 
-outlook = LabelFrame(master_window, text='Outlook', padding=10)
-outlook.pack(anchor=CENTER)
+instructions = Label(options, text='Welcome to AZ Emails! With this program, you can:\n\t1. Import and export data from and to an Excel spreadsheet.\n\t2. Retrieve newest emails from a folder called "CS EMAILS" in your Outlook application.\n\t3. Copy newest entries from yesterday and today to clipboard.', justify=LEFT)
+instructions.grid(column=0, padx= 10)
+
+excel = LabelFrame(options, text='Excel', padding=10)
+excel.grid(row=0, column=1)
+
+outlook = LabelFrame(options, text='Outlook', padding=10)
+outlook.grid(row=0, column=2)
 
 data = LabelFrame(master_window, text='Data', padding=10)
 data.pack(anchor=CENTER)
@@ -197,7 +220,7 @@ my_tree.pack()
 my_tree_scroll_y.config(command=my_tree.yview)
 my_tree_scroll_x.config(command=my_tree.xview)
 
-my_tree['columns'] = ('Date', 'Issue', 'Product', 'Name', 'Email', 'Comment', 'Session', 'Followup')
+my_tree['columns'] = ('Date', 'Issue', 'Product', 'Name', 'Email', 'Comment', 'Session', 'IP', 'Followup')
 my_tree.column("#0", width=0, minwidth=0)
 my_tree.column('Date', anchor=W, width=100)
 my_tree.column('Issue', anchor=W, width=100)
@@ -205,6 +228,7 @@ my_tree.column('Product', anchor=W, width=100)
 my_tree.column('Name', anchor=W, width=100)
 my_tree.column('Email', anchor=W, width=100)
 my_tree.column('Comment', anchor=W, width=150)
+my_tree.column('IP', anchor=W, width=100)
 my_tree.column('Session', anchor=W, width=100)
 my_tree.column('Followup', anchor=W, width=80)
 
@@ -214,6 +238,7 @@ my_tree.heading('Issue', text='Issue', anchor=W)
 my_tree.heading('Product', text='Product', anchor=W)
 my_tree.heading('Name', text='Name', anchor=W)
 my_tree.heading('Email', text='Email', anchor=W)
+my_tree.heading('IP', text='IP', anchor=W)
 my_tree.heading('Comment', text='Comment', anchor=W)
 my_tree.heading('Session', text='Session', anchor=W)
 my_tree.heading('Followup', text='Followup', anchor=W)
@@ -227,6 +252,9 @@ btn_csv = Button(excel, text="Export", command = lambda: export_xl())
 btn_csv.grid(row=0, column=1)
 
 btn_outlook=Button(outlook, text="Retrieve emails", command = lambda: import_emails())
-btn_outlook.pack(anchor=CENTER)
+btn_outlook.grid(row=0, column=0)
+
+btn_copy=Button(outlook, text='Copy New', command = copy_entries)
+btn_copy.grid(row=0, column =1)
 
 master_window.mainloop()
