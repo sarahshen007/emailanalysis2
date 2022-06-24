@@ -253,7 +253,7 @@ def get_dated_emails():
     with sqlite3.connect(database) as db:
         cursor = db.cursor()
         sql = f"""
-                SELECT * FROM feedback WHERE Date >= date('now', '-1 day') ORDER BY ASC
+                SELECT * FROM feedback WHERE Date >= date('now', '-1 day') ORDER BY Date ASC
         """
         cursor.execute(sql)
         result = cursor.fetchall()
