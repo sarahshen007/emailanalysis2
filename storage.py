@@ -217,6 +217,8 @@ def add_emails(email_list):
         for email in email_list:
             sql = f"""INSERT INTO feedback (Date, Issue, Product, Name, Email, Comment, IP, Session, Followup) VALUES("{email.date}", "{email.issueSummary}", "{email.product}", "{email.name}", "{email.customerEmail}", "{email.comment.replace('"', "'")}", "{email.ipAddress}", "{email.cookies}", {email.followup})"""
             cursor.execute(sql)
+            
+        cursor.close()
     remove_duplicates()
             
 # get last day of db
@@ -227,10 +229,22 @@ def get_last_date():
             cursor = db.cursor()
             cursor.execute('SELECT MAX (Date) AS "Max Date" FROM feedback')
             date = cursor.fetchall()[0][0]
+            cursor.close()
     except:
         return date
         
     return date
+
+def get_date_range(min, max, order="DESC"):
+    entries = []
+    
+    with sqlite3.connect(database) as db:
+        cursor = db.cursor()
+        cursor.execute(f'SELECT * FROM feedback WHERE Date >= "{min}" AND Date <= "{max}" ORDER BY Date {order}')
+        entries = cursor.fetchall()
+        cursor.close()
+
+    return entries
 
 # remove duplicates from table
 def remove_duplicates():
@@ -245,7 +259,7 @@ def remove_duplicates():
                 )
                 """
         cursor.execute(sql)
-
+        cursor.close()
 # get yesterday's emails
 def get_dated_emails():
     result = [] 
@@ -253,11 +267,11 @@ def get_dated_emails():
     with sqlite3.connect(database) as db:
         cursor = db.cursor()
         sql = f"""
-                SELECT * FROM feedback WHERE Date >= date('now', '-1 day') ORDER BY ASC
+                SELECT * FROM feedback WHERE Date = date('now', '-1 day') ORDER BY Date ASC
         """
         cursor.execute(sql)
         result = cursor.fetchall()
-    
+        cursor.close()
     return result
 
 # FUNCTIONS FOR TEXT MANIPULATION & ISSUE PREDICTION

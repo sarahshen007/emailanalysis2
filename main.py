@@ -4,6 +4,7 @@ from tkinter import ttk
 from tkinter.ttk import *
 from tkinter import filedialog
 from tkinter import messagebox
+import tkcalendar
 
 import datetime
 from datetime import date
@@ -36,7 +37,7 @@ def import_xl():
 
 # Export spreadsheet
 def export_xl():
-    result = [("Date", "Issue Summary", "Product", "Name", "Email", "Comment", "IP", "Session", "Follow Up Needed?")] + list_entries("ASC")
+    result = [("Date", "Issue Summary", "Product", "Name", "Email", "Comment", "IP", "Session", "Follow Up Needed?")] + list_entries("ASC", False)
     df = pd.DataFrame(result)
     
     try:
@@ -155,8 +156,11 @@ def import_emails():
     messagebox.showinfo('Success', 'Your emails were added to the database!')
 
 # View data
-def list_entries(order):
-    result = storage.get_emails(order)
+def list_entries(order, dates):
+    if not dates:
+        result = storage.get_emails(order)
+    else:
+        result = storage.get_date_range(date1.get_date(), date2.get_date())
     for i in range(len(result)):
         entry=result[i]
         comment = str(entry[5])
@@ -175,10 +179,22 @@ def copy_entries():
 
     except:
         messagebox.showerror('Error', 'Copy unsuccessful. Try again')
+        
+# Copy entries from date range
+def copy_entries_from_range():
+    try: 
+        result = storage.get_date_range(date1.get_date(), date2.get_date(), order="ASC")
+        df = pd.DataFrame(result, columns =['Date', 'Issue', 'Product', 'Name', 'Email', 'Comment', 'IP', 'Session', 'Followup'])
+        df.to_clipboard(sep='\t', index=False, header=False)
+        
+        messagebox.showinfo('Success', 'Emails were copied in excel format to clipboard!')
+    except:
+        messagebox.showerror('Error', 'Copy unsuccessful. Try again')
+
 # update treeview
-def update_treeview():
+def update_treeview(dates=False):
     try:
-        results = list_entries("DESC")
+        results = list_entries("DESC", dates)
     except:
         results = []
     
@@ -192,22 +208,22 @@ def update_treeview():
 master_window=Tk()
 master_window.title('AZ Emails')
 master_window.iconbitmap('images/azlogo.ico')
-master_window.geometry("1000x400")
+master_window.geometry("1140x500")
 
 options = Frame(master_window, padding = 10)
 options.pack(anchor=W)
 
-instructions = Label(options, text='Welcome to AZ Emails! With this program, you can:\n\t1. Import and export data from and to an Excel spreadsheet.\n\t2. Retrieve newest emails from a folder called "CS EMAILS" in your Outlook application.\n\t3. Copy newest entries from yesterday and today to clipboard.', justify=LEFT)
-instructions.grid(column=0, padx= 10)
+# instructions = Label(options, text='Welcome to AZ Emails! With this program, you can:\n\t1. Import and export data from and to an Excel spreadsheet.\n\t2. Retrieve newest emails from a folder called "CS EMAILS" in your Outlook application.\n\t3. Copy newest entries from yesterday and today to clipboard.', justify=LEFT)
+# instructions.grid(column=0, padx= 10)
 
 excel = LabelFrame(options, text='Excel', padding=10)
-excel.grid(row=0, column=1)
+excel.pack(side=LEFT)
 
 outlook = LabelFrame(options, text='Outlook', padding=10)
-outlook.grid(row=0, column=2)
+outlook.pack(side=LEFT)
 
 data = LabelFrame(master_window, text='Data', padding=10)
-data.pack(anchor=CENTER)
+data.pack(anchor=CENTER, expand=True, fill=BOTH)
 
 my_tree_scroll_y = Scrollbar(data)
 my_tree_scroll_y.pack(side=RIGHT, fill=Y)
@@ -215,7 +231,7 @@ my_tree_scroll_x = Scrollbar(data, orient='horizontal')
 my_tree_scroll_x.pack(side=BOTTOM, fill=X)
 
 my_tree = ttk.Treeview(data, yscrollcommand=my_tree_scroll_y.set, xscrollcommand=my_tree_scroll_x.set)
-my_tree.pack()
+my_tree.pack(expand=True, fill=BOTH)
 
 my_tree_scroll_y.config(command=my_tree.yview)
 my_tree_scroll_x.config(command=my_tree.xview)
@@ -254,7 +270,25 @@ btn_csv.grid(row=0, column=1)
 btn_outlook=Button(outlook, text="Retrieve emails", command = lambda: import_emails())
 btn_outlook.grid(row=0, column=0)
 
-btn_copy=Button(outlook, text='Copy New', command = copy_entries)
-btn_copy.grid(row=0, column =1)
+min_date_text = Label(data, text='From ')
+min_date_text.pack(side=LEFT)
+
+date1 = tkcalendar.DateEntry(data)
+date1.pack(side=LEFT,padx=10,pady=10)
+
+max_date_text = Label(data, text=' to ')
+max_date_text.pack(side=LEFT)
+
+date2 = tkcalendar.DateEntry(data)
+date2.pack(side=LEFT,padx=10,pady=10)
+
+date_btn = Button(data, text="Display", command = lambda: update_treeview(dates=True))
+date_btn.pack(side=LEFT)
+
+copy_date_btn = Button(data, text="Copy emails from date range", command = lambda: copy_entries_from_range())
+copy_date_btn.pack(side=LEFT)
+
+btn_copy=Button(data, text='Copy emails from yesterday', command = copy_entries)
+btn_copy.pack(side=LEFT)
 
 master_window.mainloop()
