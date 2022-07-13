@@ -84,76 +84,83 @@ def import_emails():
     # Log keeping track of email objects
     emails_log = []
 
-    # Parse spreadsheet to predict issue
-    prev_data = storage.generate_issue_data()
+    try:
+        # Parse spreadsheet to predict issue
+        prev_data = storage.generate_issue_data()
+    except:
+        messagebox.showerror("Error", "Could not generate issue data from database. Something went wrong!")
+        return
 
-    # Loop through emails
-    while msg:
-        # Get email date 
-        date = msg.SentOn.strftime("%d-%m-%y")
-        date = datetime.datetime.strptime(date, '%d-%m-%y').date()
+    try:
+        # Loop through emails
+        while msg:
+            # Get email date 
+            date = msg.SentOn.strftime("%d-%m-%y")
+            date = datetime.datetime.strptime(date, '%d-%m-%y').date()
 
-        # Get Subject Line of email
-        sjl = msg.Subject
+            # Get Subject Line of email
+            sjl = msg.Subject
 
-        # Only add emails since last update           
-        if d <= date:
-            new_messages.append(msg)
+            # Only add emails since last update           
+            if d <= date and (sjl == "Web Site - Performance" or sjl == "Web Site -Order Questions"):
+                new_messages.append(msg)
 
-            # Dictionary to store message info
-            info = {}
+                # Dictionary to store message info
+                info = {}
 
-            # Date message was received
-            date = str(msg.SentOn).split(' ')[0]
-            date = datetime.datetime.strptime(date, '%Y-%m-%d').date()
-            info['date'] = date
+                # Date message was received
+                date = str(msg.SentOn).split(' ')[0]
+                date = datetime.datetime.strptime(date, '%Y-%m-%d').date()
+                info['date'] = date
 
-            # Remove unecessary characters from msg html
-            regex = msg.HTMLBody.replace('\r', '').replace('\n', '') 
+                # Remove unecessary characters from msg html
+                regex = msg.HTMLBody.replace('\r', '').replace('\n', '') 
 
-            # Parse into html using soup
-            soup = BeautifulSoup(regex, "html.parser") 
+                # Parse into html using soup
+                soup = BeautifulSoup(regex, "html.parser") 
 
-            # Create list of category + values
-            texts = str(soup.find_all('font')[0].encode_contents(encoding='utf-8')).strip('b').strip('\'').strip('\"').replace('<br/>', '\n')
-            texts = emails.replaceCharacters(texts)
-            texts = texts.strip().split('\n')
-            texts = list(filter(None, texts))
+                # Create list of category + values
+                texts = str(soup.find_all('font')[0].encode_contents(encoding='utf-8')).strip('b').strip('\'').strip('\"').replace('<br/>', '\n')
+                texts = emails.replaceCharacters(texts)
+                texts = texts.strip().split('\n')
+                texts = list(filter(None, texts))
 
-            # Create list of pairs to populate info dictionary
-            pairs = []
-            
-            # Edit list for unwanted extra elements caused by extra break elements
-            lastKey = ""
-            for data in texts:
-                pair = data.split(':', 1)
-                if len(pair) == 1:
-                    info[lastKey] = info[lastKey] + pair[0]
-                elif len(pair) == 2: 
-                    lastKey = pair[0].strip()
-                    info[lastKey] = pair[1].strip()
+                # Create list of pairs to populate info dictionary
+                pairs = []
+                
+                # Edit list for unwanted extra elements caused by extra break elements
+                lastKey = ""
+                for data in texts:
+                    pair = data.split(':', 1)
+                    if len(pair) == 1:
+                        info[lastKey] = info[lastKey] + pair[0]
+                    elif len(pair) == 2: 
+                        lastKey = pair[0].strip()
+                        info[lastKey] = pair[1].strip()
 
-            # Generate summary of comment  
-            comment = info['Comment Value']
-            char_list = [comment[j] for j in range(len(str(comment))) if ord(comment[j]) in range(65536)]
-            comment_fix=''.join(char_list)    
-            info['Comment Value'] = comment_fix
+                # Generate summary of comment  
+                comment = info['Comment Value']
+                char_list = [comment[j] for j in range(len(str(comment))) if ord(comment[j]) in range(65536)]
+                comment_fix=''.join(char_list)    
+                info['Comment Value'] = comment_fix
 
-            predicted_issue = storage.generate_issue(comment, prev_data)
+                predicted_issue = storage.generate_issue(comment, prev_data)
 
-            info['Issue Summary'] = predicted_issue[0]
-            info['Product'] = predicted_issue[1]
-            
-            # Make new email object with info
-            newEmail = emails.emailCreator(info)
+                info['Issue Summary'] = predicted_issue[0]
+                info['Product'] = predicted_issue[1]
+                
+                # Make new email object with info
+                newEmail = emails.emailCreator(info)
 
-            # Add email object to emails log
-            emails_log.append(newEmail)
-            
-        msg = messages.GetPrevious()
-    storage.add_emails(emails_log)
-    update_treeview()
-    messagebox.showinfo('Success', 'Your emails were added to the database!')
+                # Add email object to emails log
+                emails_log.append(newEmail)
+                
+            msg = messages.GetPrevious()
+        storage.add_emails(emails_log)
+        update_treeview()
+        messagebox.showinfo('Success', 'Your emails were added to the database!')
+    except:
+        messagebox.showerror('Error', 'There was an error parsing the emails in your folder. Please check their format.')
 
 # View data
 def list_entries(order, dates):
@@ -264,10 +271,10 @@ update_treeview()
 btn_sp=Button(excel, text="Import", command=import_xl)
 btn_sp.grid(row=0, column=0)
 
-btn_csv = Button(excel, text="Export", command = lambda: export_xl())
+btn_csv = Button(excel, text="Export", command = export_xl)
 btn_csv.grid(row=0, column=1)
 
-btn_outlook=Button(outlook, text="Retrieve emails", command = lambda: import_emails())
+btn_outlook=Button(outlook, text="Retrieve emails", command = import_emails)
 btn_outlook.grid(row=0, column=0)
 
 min_date_text = Label(data, text='From ')
@@ -285,7 +292,7 @@ date2.pack(side=LEFT,padx=10,pady=10)
 date_btn = Button(data, text="Display", command = lambda: update_treeview(dates=True))
 date_btn.pack(side=LEFT)
 
-copy_date_btn = Button(data, text="Copy emails from date range", command = lambda: copy_entries_from_range())
+copy_date_btn = Button(data, text="Copy emails from date range", command = copy_entries_from_range)
 copy_date_btn.pack(side=LEFT)
 
 btn_copy=Button(data, text='Copy emails from yesterday', command = copy_entries)
